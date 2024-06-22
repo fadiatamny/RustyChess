@@ -1,12 +1,68 @@
+use tokio::{io::BufStream, net::TcpListener, signal};
 mod models;
 use models::*;
+use tokio_util::sync::CancellationToken;
+use tracing::{error, info};
 
-fn main() {
+static PORT: u16 = 3000;
 
-    let r = request::Method::try_from("test");
-    match r {
-        Ok(m) => println!("This is cool {:?}", m),
-        Err(e) => println!("{}", errors::APIError::internal_server_error(e)), 
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
+    let port = std::env::var("PORT").unwrap_or_else(|_| PORT.to_string());
+    let listener = TcpListener::bind(format!("0.0.0.0:{port}")).await.unwrap();
+    let cancel_token = CancellationToken::new();
+
+    info!("Listening on port: {port}");
+    info!("{}", listener.local_addr().unwrap());
+    info!("Press Ctrl+C to stop the server...");
+
+    tokio::spawn({
+        let cancel_token = cancel_token.clone();
+        async move {
+            if let Ok(()) = signal::ctrl_c().await {
+                info!("received Ctrl-C, shutting down");
+                cancel_token.cancel();
+            }
+        }
+    });
+
+    let mut tasks: Vec<tokio::task::JoinHandle<()>> = Vec::new();
+
+    loop {
+        let cancel_token = cancel_token.clone();
+
+        tokio::select! {
+            Ok((stream, addr)) = listener.accept() => {
+                let client_task = tokio::spawn(async move {
+                    info!("Accepted connection from: {addr}");
+                    let mut buffer = BufStream::new(stream);
+
+                    let data = "Hello".as_bytes();
+
+                    let res = response::Response {
+                        status: response::Status::Ok,
+                        headers: None,
+                        data: Box::new(data),
+                    };
+
+                    if let Err(e) = res.send(&mut buffer).await {
+                        error!("Error writing response: {}", e);
+                        return;
+                    }
+
+                    info!("Response sent");
+                });
+                tasks.push(client_task);
+            },
+            _ = cancel_token.cancelled() => {
+                info!("stop listening");
+                break;
+            }
+        }
     }
-    println!("Hello, world!");
+
+    futures::future::join_all(tasks).await;
+    Ok(())
 }
