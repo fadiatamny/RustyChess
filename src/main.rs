@@ -1,3 +1,4 @@
+use maplit::hashmap;
 use tokio::{io::BufStream, net::TcpListener, signal};
 mod models;
 use models::*;
@@ -37,18 +38,8 @@ async fn main() -> anyhow::Result<()> {
             Ok((stream, addr)) = listener.accept() => {
                 let client_task = tokio::spawn(async move {
                     info!("Accepted connection from: {addr}");
-                    let mut buffer = BufStream::new(stream);
-
-                    let data = "Hello".as_bytes();
-
-                    let res = response::Response {
-                        status: response::Status::Ok,
-                        headers: None,
-                        data: Box::new(data),
-                    };
-
-                    if let Err(e) = res.send(&mut buffer).await {
-                        error!("Error writing response: {}", e);
+                    if let  Err(e) = handle_connection(stream).await {
+                        error!("Error handling connection: {e}");
                     }
                 });
                 tasks.push(client_task);
@@ -61,5 +52,37 @@ async fn main() -> anyhow::Result<()> {
     }
 
     futures::future::join_all(tasks).await;
+    Ok(())
+}
+
+async fn handle_connection(stream: tokio::net::TcpStream) -> anyhow::Result<()> {
+    let mut buffer = BufStream::new(stream);
+
+    let req = request::Request::parse(&mut buffer).await?;
+
+    info!("Request: {:#?}", req);
+
+    let data = "Hello".to_string();
+
+    // let res = response::Response {
+    //     status: response::Status::Ok,
+    //     headers: None,
+    //     data: models::APIEntities::APIData::Text(models::APIEntities::APITextResponse::new(data)),
+    // };
+
+    let res = response::Response {
+        status: response::Status::Ok,
+        headers: None,
+        data: models::api_entities::APIData::JSON(models::api_entities::APIJsonResponse::new(
+            hashmap! {
+                "test".to_string() => serde_json::Value::Bool(true)
+            }
+        )),
+    };
+
+    if let Err(e) = res.send(&mut buffer).await {
+        error!("Error writing response: {}", e);
+    }
+
     Ok(())
 }
