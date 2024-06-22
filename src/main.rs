@@ -49,10 +49,7 @@ async fn main() -> anyhow::Result<()> {
 
                     if let Err(e) = res.send(&mut buffer).await {
                         error!("Error writing response: {}", e);
-                        return;
                     }
-
-                    info!("Response sent");
                 });
                 tasks.push(client_task);
             },
