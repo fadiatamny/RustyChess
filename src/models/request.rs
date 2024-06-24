@@ -20,6 +20,11 @@ impl TryFrom<&str> for Method {
     fn try_from(method: &str) -> Result<Self, Self::Error> {
         match method {
             "GET" => Ok(Method::Get),
+            "POST" => Ok(Method::Post),
+            "PUT" => Ok(Method::Put),
+            "PATCH" => Ok(Method::Patch),
+            "DELETE" => Ok(Method::Delete),
+            "OPTIONS" => Ok(Method::Options),
             _ => Err(APIErrors::internal_server_error("Method not allowed")),
         }
     }
