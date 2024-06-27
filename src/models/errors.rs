@@ -1,7 +1,7 @@
-use std::error;
+use thiserror::Error;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub struct APIError {
     code: u16,
     message: String,
@@ -17,32 +17,24 @@ impl APIError {
 }
 
 impl fmt::Display for APIError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} - {}", self.code, self.message)
     }
 }
 
-impl error::Error for APIError {}
+#[derive(Error, Debug)]
+pub enum APIErrors {
+    #[error("Not Found: {0}")]
+    NotFound(APIError),
+    #[error("Bad Request: {0}")]
+    BadRequest(APIError),
+    #[error("Internal Server Error: {0}")]
+    InternalServerError(APIError)
+}
 
 
-impl APIError {
-    pub fn not_found(message: impl Into<String>) -> Self {
-        let str = message.into();
-        APIError::new(404, format!("Not Found - {}", str))
-    }
-
-    pub fn unauthorized(message: impl Into<String>) -> Self {
-        let str = message.into();
-        APIError::new(404, format!("Unauthorized - {}", str))
-    }
-
+impl APIErrors {
     pub fn internal_server_error(message: impl Into<String>) -> Self {
-        let str = message.into();
-        APIError::new(500, format!("Internal Server Error - {}", str))
-    }
-
-    pub fn bad_request(message: impl Into<String>) -> Self {
-        let str = message.into();
-        APIError::new(400, format!("Bad Request - {}", str))
+        APIErrors::InternalServerError(APIError::new(500, message))
     }
 }
