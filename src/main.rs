@@ -1,10 +1,10 @@
-use api_entities::{APIData, APIJsonResponse, APITextResponse};
-use maplit::hashmap;
-use response::{Response, Status};
-use router::Router;
-use tokio::{io::BufStream, net::TcpListener, signal};
 mod models;
-use models::*;
+mod routers;
+mod controllers;
+
+use models::{request::Request, router::Router};
+
+use tokio::{io::BufStream, net::TcpListener, signal};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
@@ -22,31 +22,7 @@ async fn main() -> anyhow::Result<()> {
     info!("{}", listener.local_addr().unwrap());
     info!("Press Ctrl+C to stop the server...");
 
-    let mut child_router = Router::new();
-    child_router.get("/world", |req| Response {
-        status: Status::Ok,
-        headers: None,
-        data: APIData::Text(APITextResponse::new("World".to_string())),
-    });
-
-    let mut router = Router::new();
-
-    router.get("/hello", |req| Response {
-        status: Status::Ok,
-        headers: None,
-        data: APIData::Text(APITextResponse::new("Hello".to_string())),
-    });
-    router.post("/test", |req| Response {
-        status: Status::Ok,
-        headers: None,
-        data: models::api_entities::APIData::JSON(APIJsonResponse::new(
-            hashmap! {
-                "test".to_string() => serde_json::Value::Bool(true)
-            },
-        )),
-    });
-
-    router.use_router("/child", child_router);
+    let router = routers::get_routers();
 
     tokio::spawn({
         let cancel_token = cancel_token.clone();
@@ -88,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
 async fn handle_connection(stream: tokio::net::TcpStream, router: Router) -> anyhow::Result<()> {
     let mut buffer = BufStream::new(stream);
 
-    let req = request::Request::parse(&mut buffer).await?;
+    let req = Request::parse(&mut buffer).await?;
     let res = router.handle(&req);
 
     if let Err(e) = res.send(&mut buffer).await {

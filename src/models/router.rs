@@ -1,4 +1,4 @@
-use crate::{
+use crate::models::{
     api_entities::{APIData, APITextResponse},
     request::{Method, Request},
     response::{Response, Status},
