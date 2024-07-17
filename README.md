@@ -4,15 +4,12 @@ Rust based web service that communicates via either http or websockets to allow 
 
 # TODO LIST
 
-- [ ] implement basic http server
+- [x] implement basic http server
 - [ ] add basic get route for a random chess opener
 - [ ] add a based on board state move prediction
 - [ ] implement web sockets for game play
 - [ ] create basic rooms for game play
 - [ ] handle games
-<<<<<<< Updated upstream
-
-=======
 - [ ] support http 2
 - [ ] support https
 - [ ] support websockets over https + http2 
@@ -33,4 +30,3 @@ chess_board = [
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 ]
 ```
->>>>>>> Stashed changes
